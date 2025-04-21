@@ -35,11 +35,13 @@ Now you're all set! For example, run
 python3 ./src/eval.py --model=gemma3 --num-questions=150
 ```
 
-to begin the exam for the model! Results will also be written to an output file in the project root directory, ending in `-results.json`.
+to begin the exam for the model! Results will also be written to an output file in the project root directory, ending in `.results.json`.
 
 **Tip**: You can specify several models separated by commata in order to make them compete against each other.
 
 **Important**: Do not just perform separate runs with `--num-questions` specified, as this will pick different, random questions from the dataset for each run individually. If you want to compare models with a limited number of questions, use the tip described above.
+
+**For text-only models** specify `--only-text` to only use the text subset of the HLE dataset.
 
 ## Environment variables
 

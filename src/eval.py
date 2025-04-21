@@ -21,12 +21,16 @@ p.add_argument("--model", type=str, required=True)
 p.add_argument("--judge", type=str, required=True)
 p.add_argument("--dataset", type=str)
 p.add_argument("--num-questions", type=int)
+p.add_argument("--only-text", action=argparse.BooleanOptionalAction)
 
 
 logger = create_logger()
 
 
 STD_DATASET: str = "cais/hle"
+
+MAX_TOKENS_ANSWER: int = 2**13
+MAX_TOKENS_JUDGE: int = 2**12
 
 # taken from line 11-13,
 # https://github.com/centerforaisafety/hle
@@ -44,16 +48,21 @@ Confidence: {your confidence score between 0% and 100% for your answer}"""
 # https://github.com/centerforaisafety/hle
 JUDGE_PROMPT = """Judge whether the following [response] to [question] is \
 correct or not based on the precise and unambiguous [correct_answer] below.
+You are correcting an exam. Given a question and the student's response, judge
+whether it matches the [correct_answer] below.
 
 [question]: {question}
 
 [response]: {response}
 
-The following text describes the actual, correct answer to the question.
+Please extract the FINAL, EXACT answer by the student from the text [response].
+
+Now, look at the actual, correct solution:
 
 [correct_answer]: {correct_answer}
 
-After reading the [correct_answer], please judge: is the [response] correct?
+After reading the [correct_answer], please judge: is the student's [response]
+correct?
 
 Explain why the final answer in [response] is correct or incorrect based on \
 [correct_answer], focusing only on if there are meaningful differences \
@@ -105,12 +114,12 @@ def write_result_file(run_id: str, result: Result) -> None:
     Writes a result object to a file.
     """
 
-    filename: str = f"{run_id}-results.json"
+    filename: str = f"{run_id}.results.json"
 
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(
             {
-                "models": Result.models,
+                "models": result.models,
                 "results": {
                     k: {
                         "correct": res.correct,
@@ -131,12 +140,10 @@ def prompt_model(client, model, question) -> ollama.ChatResponse:
     Prompts a given model with a question.
     """
 
-    if question["image"]:  # "" if not multi-modal
-        image = {"type": "image_url", "image_url": {"url": question["image"]}}
+    user_message = {"role": "user", "content": question["question"]}
 
-        content = [question["question"], image]
-    else:
-        content = [question["question"]]
+    if question["image"]:
+        user_message["images"] = [question["image"].split(",")[-1]]
 
     response = client.chat(
         model=model,
@@ -149,8 +156,9 @@ def prompt_model(client, model, question) -> ollama.ChatResponse:
                     else SYSTEM_MC
                 ),
             },
-            {"role": "user", "content": content},
+            user_message,
         ],
+        options={"num_predict": MAX_TOKENS_ANSWER},
     )
 
     return response
@@ -177,6 +185,7 @@ def prompt_judge_model(
                     ),
                 },
             ],
+            options={"num_predict": MAX_TOKENS_JUDGE},
         )
 
         text = response["message"]["content"]
@@ -255,6 +264,29 @@ def generate_anwers(models, client, questions, glob_res):
         glob_res.model_results[model] = res
 
 
+def print_results(models, glob_res):
+    """
+    Prints the results of the run.
+    """
+
+    for model in models:
+        model_results = glob_res.model_results[model]
+        logger.info(
+            "%s: %s correct, %s wrong (%s percent)",
+            model,
+            model_results.correct,
+            model_results.wrong,
+            round(
+                100
+                * (
+                    model_results.correct
+                    / (model_results.correct + model_results.wrong)
+                ),
+                2,
+            ),
+        )
+
+
 def main():
     """
     The main function that manages the entire program flow.
@@ -279,6 +311,9 @@ def main():
         STD_DATASET if args.dataset is None else args.dataset, split="test"
     ).to_list()  # type: ignore
 
+    if args.only_text:
+        questions = list(filter(lambda el: not el["image"], questions))
+
     if args.num_questions is not None:
         logger.info(
             "picking %s random questions for this run", args.num_questions
@@ -298,6 +333,8 @@ def main():
 
     logger.info("writing results")
     write_result_file(run_uuid, glob_res)
+
+    print_results(models, glob_res)
 
 
 if __name__ == "__main__":

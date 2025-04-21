@@ -64,14 +64,14 @@ Now, look at the actual, correct solution:
 After reading the [correct_answer], please judge: is the student's [response]
 correct?
 
-Explain why the final answer in [response] is correct or incorrect based on \
-[correct_answer], focusing only on if there are meaningful differences \
+Please explain why the final answer in [response] is correct or incorrect based
+on [correct_answer], focusing only on if there are meaningful differences \
 between [correct_answer] and the extracted final answer. Do not comment on \
 any background to the problem, do not attempt to solve the problem, do not \
 argue for any answer different than [correct_answer], focus only on whether \
 the answers match.
 
-Finally, answer 'YES, CORRECT' only if extracted_final_answer matches the \
+Then, also answer 'YES, CORRECT' if extracted_final_answer matches the \
 [correct_answer] given above, or is within a small margin of error for \
 numerical problems. Answer 'NO, INCORRECT' otherwise, i.e. if there if there \
 is any inconsistency, ambiguity, non-equivalency, or if the extracted answer \

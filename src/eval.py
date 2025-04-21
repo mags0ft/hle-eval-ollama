@@ -3,6 +3,7 @@ Evaluation script to run "Humanity's Last Exam" on Ollama models.
 """
 
 import random
+import time
 from typing import Union
 import json
 import dataclasses
@@ -31,6 +32,8 @@ STD_DATASET: str = "cais/hle"
 
 MAX_TOKENS_ANSWER: int = 2**13
 MAX_TOKENS_JUDGE: int = 2**12
+
+ERROR_TIMEOUT: int = 3  # in seconds; wait period before next request is sent
 
 # taken from line 11-13,
 # https://github.com/centerforaisafety/hle
@@ -173,27 +176,31 @@ def prompt_judge_model(
     """
 
     while True:
-        response = client.chat(
-            model=model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": JUDGE_PROMPT.format(
-                        question=question,
-                        correct_answer=answer,
-                        response=actual_response,
-                    ),
-                },
-            ],
-            options={"num_predict": MAX_TOKENS_JUDGE},
-        )
+        try:
+            response = client.chat(
+                model=model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": JUDGE_PROMPT.format(
+                            question=question,
+                            correct_answer=answer,
+                            response=actual_response,
+                        ),
+                    },
+                ],
+                options={"num_predict": MAX_TOKENS_JUDGE},
+            )
 
-        text = response["message"]["content"]
+            text = response["message"]["content"]
 
-        if "yes, correct" in text.lower():
-            return True
-        if "no, incorrect" in text.lower():
-            return False
+            if "yes, correct" in text.lower():
+                return True
+            if "no, incorrect" in text.lower():
+                return False
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error while judging: %s", e)
+            time.sleep(ERROR_TIMEOUT)
 
 
 def finalize_result(glob_res):
@@ -260,6 +267,7 @@ def generate_anwers(models, client, questions, glob_res):
             except Exception as e:  # pylint: disable=broad-exception-caught
                 # Rare, but possible!
                 logger.error("An error occured! %s", e)
+                time.sleep(ERROR_TIMEOUT)
 
         glob_res.model_results[model] = res
 

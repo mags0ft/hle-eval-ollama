@@ -1,3 +1,7 @@
+"""
+Logger factory module for the evaluation program.
+"""
+
 import logging
 
 

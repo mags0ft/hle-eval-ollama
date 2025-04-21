@@ -2,19 +2,17 @@
 Evaluation script to run "Humanity's Last Exam" on Ollama models.
 """
 
-from email.mime import image
-from http import client
 import random
 from typing import Union
-import tqdm
-import ollama
-import datasets
 import json
 import dataclasses
 import uuid
 import argparse
 import os
+import ollama
 
+import datasets
+import tqdm
 from logger import create_logger
 
 
@@ -23,6 +21,9 @@ p.add_argument("--model", type=str, required=True)
 p.add_argument("--judge", type=str, required=True)
 p.add_argument("--dataset", type=str)
 p.add_argument("--num-questions", type=int)
+
+
+logger = create_logger()
 
 
 STD_DATASET: str = "cais/hle"
@@ -182,63 +183,31 @@ def prompt_judge_model(
 
         if "yes, correct" in text.lower():
             return True
-        elif "no, incorrect" in text.lower():
+        if "no, incorrect" in text.lower():
             return False
 
 
-def main():
+def finalize_result(glob_res):
     """
-    The main function that manages the entire program flow.
+    Finalizes the results by counting wrong and correct answers.
     """
 
-    args = p.parse_args()
-    models: "list[str]" = [model.strip() for model in args.model.split(",")]
-
-    client = ollama.Client(
-        host=os.getenv("HLE_OLLAMA_HOST", "http://localhost:11434"),
-        headers={
-            "Authentication": f"Bearer \
-{os.getenv('HLE_OLLAMA_TOKEN', 'ollama')}"
-        },
-    )
-
-    logger = create_logger()
-
-    logger.info("loading dataset")
-    questions = datasets.load_dataset(  # type: ignore
-        STD_DATASET if args.dataset is None else args.dataset, split="test"
-    ).to_list()  # type: ignore
-
-    if args.num_questions is not None:
-        logger.info(
-            "picking %s random questions for this run", args.num_questions
+    for res in glob_res.model_results.values():
+        total_answers = len(res.answers)
+        correct_answers = sum(
+            (1 if el["correct"] else 0) for el in res.answers.values()
         )
-        questions = random.choices(questions, k=args.num_questions)
+        wrong_answers = total_answers - correct_answers
 
-    glob_res = Result(models=models)
+        res.correct = correct_answers
+        res.wrong = wrong_answers
 
-    logger.info("prompting models for answers")
-    for model in models:
-        res = IndividualResult()
-        logger.info("prompting %s with the questions", model)
 
-        for question in tqdm.tqdm(questions):
-            try:
-                response = prompt_model(client, model, question)
-
-                answer: str = response["message"]["content"]
-
-                res.answers[question["id"]] = {
-                    "answer": answer,
-                    "correct": False,  # we do not know this yet!
-                }
-            except Exception as e:
-                # Rare, but possible!
-                logger.error("An error occured! %s", e)
-
-        glob_res.model_results[model] = res
-
-    logger.info("answer generation done; judging will now begin")
+def judge_answers(args, models, client, questions, glob_res):
+    """
+    Makes a - hopefully independent, third-party - model judge the other
+    models' responses.
+    """
 
     for model in models:
         logger.info("judging %s's responses", model)
@@ -259,7 +228,76 @@ def main():
 
             model_results.answers[question["id"]]["correct"] = is_correct
 
-    logger.info("done judging, finalizing results...")
+
+def generate_anwers(models, client, questions, glob_res):
+    """
+    Prompts the models for answers to the questions in the dataset one by one.
+    """
+
+    for model in models:
+        res = IndividualResult()
+        logger.info("prompting %s with the questions", model)
+
+        for question in tqdm.tqdm(questions):
+            try:
+                response = prompt_model(client, model, question)
+
+                answer: str = response["message"]["content"]
+
+                res.answers[question["id"]] = {
+                    "answer": answer,
+                    "correct": False,  # we do not know this yet!
+                }
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                # Rare, but possible!
+                logger.error("An error occured! %s", e)
+
+        glob_res.model_results[model] = res
+
+
+def main():
+    """
+    The main function that manages the entire program flow.
+    """
+
+    run_uuid = str(uuid.uuid4())
+    logger.info("run uuid is %s", run_uuid)
+
+    args = p.parse_args()
+    models: "list[str]" = [model.strip() for model in args.model.split(",")]
+
+    client = ollama.Client(
+        host=os.getenv("HLE_OLLAMA_HOST", "http://localhost:11434"),
+        headers={
+            "Authentication": f"Bearer \
+{os.getenv('HLE_OLLAMA_TOKEN', 'ollama')}"
+        },
+    )
+
+    logger.info("loading dataset")
+    questions = datasets.load_dataset(  # type: ignore
+        STD_DATASET if args.dataset is None else args.dataset, split="test"
+    ).to_list()  # type: ignore
+
+    if args.num_questions is not None:
+        logger.info(
+            "picking %s random questions for this run", args.num_questions
+        )
+        questions = random.choices(questions, k=args.num_questions)
+
+    glob_res = Result(models=models)
+
+    logger.info("prompting models for answers")
+    generate_anwers(models, client, questions, glob_res)
+
+    logger.info("answer generation done; judging will now begin")
+    judge_answers(args, models, client, questions, glob_res)
+
+    logger.info("done judging, finalizing results")
+    finalize_result(glob_res)
+
+    logger.info("writing results")
+    write_result_file(run_uuid, glob_res)
 
 
 if __name__ == "__main__":

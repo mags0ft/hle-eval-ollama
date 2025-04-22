@@ -32,12 +32,12 @@ huggingface-cli login
 Now you're all set! For example, run
 
 ```bash
-python3 ./src/eval.py --model=gemma3 --num-questions=150
+python3 ./src/eval.py --model=gemma3 --judge=llama3:8b --num-questions=150
 ```
 
 to begin the exam for the model! Results will also be written to an output file in the project root directory, ending in `.results.json`.
 
-**Tip**: You can specify several models separated by commata in order to make them compete against each other.
+**Tip**: You can specify several models separated by commata in order to make them compete against each other. You can - and must - only specify one judge model (the model that will rate the answers), and it's highly recommended to choose a model that isn't part of the models taking the exam.
 
 **Important**: Do not just perform separate runs with `--num-questions` specified, as this will pick different, random questions from the dataset for each run individually. If you want to compare models with a limited number of questions, use the tip described above.
 

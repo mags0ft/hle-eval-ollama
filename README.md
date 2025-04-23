@@ -14,7 +14,7 @@ The official repo with evaluation scripts by HLE is notoriously hard to use, onl
 
 ## How to use it
 
-It's luckily simple! First of all, make sure to have a [Huggingface](https://huggingface.co/) account. The HLE dataset is **gated**, which means that you will need to authenticate in order to use it. You may want to visit the [HLE page](https://huggingface.co/datasets/cais/hle) on HuggingFace and agree to your information being submitted.
+It's luckily simple! First of all, make sure to have a [Hugging Face](https://huggingface.co/) account. The HLE dataset is **gated**, which means that you will need to authenticate in order to use it. You may want to visit the [HLE page](https://huggingface.co/datasets/cais/hle) on Hugging Face and agree to your information being submitted.
 
 ```bash
 python3 -m venv .venv
@@ -22,7 +22,7 @@ python3 -m venv .venv
 pip install -r ./requirements.txt
 ```
 
-Generate a HuggingFace access token [here](https://huggingface.co/settings/tokens) and copy it to your clipboard.
+Generate a Hugging Face access token [here](https://huggingface.co/settings/tokens) and copy it to your clipboard.
 Then, run
 
 ```

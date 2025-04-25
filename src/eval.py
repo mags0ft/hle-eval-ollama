@@ -74,7 +74,7 @@ any background to the problem, do not attempt to solve the problem, do not \
 argue for any answer different than [correct_answer], focus only on whether \
 the answers match.
 
-Then, also answer 'YES, CORRECT' if extracted_final_answer matches the \
+Then, also answer 'YES, CORRECT' if the extracted final answer matches the \
 [correct_answer] given above, or is within a small margin of error for \
 numerical problems. Answer 'NO, INCORRECT' otherwise, i.e. if there if there \
 is any inconsistency, ambiguity, non-equivalency, or if the extracted answer \
@@ -146,6 +146,7 @@ def prompt_model(client, model, question) -> ollama.ChatResponse:
     user_message = {"role": "user", "content": question["question"]}
 
     if question["image"]:
+        # attach an image if there is one in the question
         user_message["images"] = [question["image"].split(",")[-1]]
 
     response = client.chat(
@@ -176,6 +177,9 @@ def prompt_judge_model(
     """
 
     while True:
+        # (as long as the judge model is unsure and hasn't given a definitive
+        # answer yet)
+
         try:
             response = client.chat(
                 model=model,
@@ -195,17 +199,20 @@ def prompt_judge_model(
             text = response["message"]["content"]
 
             if "yes, correct" in text.lower():
+                # this answer seems to be correct
                 return True
             if "no, incorrect" in text.lower():
+                # there seems to be a mistake or error in the answer
                 return False
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Error while judging: %s", e)
             time.sleep(ERROR_TIMEOUT)
 
 
-def finalize_result(glob_res):
+def finalize_result(glob_res: Result):
     """
-    Finalizes the results by counting wrong and correct answers.
+    Finalizes the results by counting wrong and correct answers, then writes
+    those back into the Result object.
     """
 
     for res in glob_res.model_results.values():
@@ -219,7 +226,13 @@ def finalize_result(glob_res):
         res.wrong = wrong_answers
 
 
-def judge_answers(args, models, client, questions, glob_res):
+def judge_answers(
+    args,
+    models: "list[str]",
+    client: ollama.Client,
+    questions,
+    glob_res: Result,
+):
     """
     Makes a - hopefully independent, third-party - model judge the other
     models' responses.
@@ -245,7 +258,9 @@ def judge_answers(args, models, client, questions, glob_res):
             model_results.answers[question["id"]]["correct"] = is_correct
 
 
-def generate_anwers(models, client, questions, glob_res):
+def generate_anwers(
+    models: "list[str]", client: ollama.Client, questions, glob_res: Result
+):
     """
     Prompts the models for answers to the questions in the dataset one by one.
     """
@@ -272,7 +287,7 @@ def generate_anwers(models, client, questions, glob_res):
         glob_res.model_results[model] = res
 
 
-def print_results(models, glob_res):
+def print_results(models: "list[str]", glob_res: Result):
     """
     Prints the results of the run.
     """
@@ -333,7 +348,10 @@ def main():
     logger.info("prompting models for answers")
     generate_anwers(models, client, questions, glob_res)
 
-    logger.info("answer generation done; judging will now begin")
+    logger.info("temporarily saving results")
+    write_result_file(run_uuid, glob_res)
+
+    logger.info("judging model answers")
     judge_answers(args, models, client, questions, glob_res)
 
     logger.info("done judging, finalizing results")

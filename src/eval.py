@@ -30,7 +30,9 @@ logger = create_logger()
 
 STD_DATASET: str = "cais/hle"
 
+# Maximum number of tokens in an answer: ~8k
 MAX_TOKENS_ANSWER: int = 2**13
+# Maximum number of tokens when judging: ~4k
 MAX_TOKENS_JUDGE: int = 2**12
 
 ERROR_TIMEOUT: int = 3  # in seconds; wait period before next request is sent

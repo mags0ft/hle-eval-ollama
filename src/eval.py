@@ -164,7 +164,11 @@ def write_result_file(run_id: str, result: Result) -> None:
                         "correct": res.correct,
                         "wrong": res.wrong,
                         "total": res.correct + res.wrong,
-                        "ratio": (res.correct / (res.correct + res.wrong)),
+                        "ratio": (
+                            (res.correct / (res.correct + res.wrong))
+                            if (res.correct + res.wrong != 0)
+                            else 0
+                        ),
                         "answers": res.answers,
                     }
                     for k, res in result.model_results.items()
@@ -338,8 +342,12 @@ def print_results(models: "list[str]", glob_res: Result):
             round(
                 100
                 * (
-                    model_results.correct
-                    / (model_results.correct + model_results.wrong)
+                    (
+                        model_results.correct
+                        / (model_results.correct + model_results.wrong)
+                        if (model_results.correct + model_results.wrong) != 0
+                        else 0
+                    )
                 ),
                 2,
             ),

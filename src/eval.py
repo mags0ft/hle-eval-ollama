@@ -17,12 +17,46 @@ import tqdm
 from logger import create_logger
 
 
-p = argparse.ArgumentParser()
-p.add_argument("--model", type=str, required=True)
-p.add_argument("--judge", type=str, required=True)
-p.add_argument("--dataset", type=str)
-p.add_argument("--num-questions", type=int)
-p.add_argument("--only-text", action=argparse.BooleanOptionalAction)
+p = argparse.ArgumentParser(
+    "hle-eval-ollama",
+    description="A simple-to-use evaluation program to get up and running \
+with Humanity's Last Exam and Ollama models.",
+)
+p.add_argument(
+    "--model",
+    type=str,
+    required=True,
+    help="the model(s) to benchmark. Several models must be separated with \
+commas.",
+)
+p.add_argument(
+    "--judge",
+    type=str,
+    required=True,
+    help="the model to be used for judging the other model's responses when \
+given the correct answer. It is recommended not to use a model of a family \
+already present in the --model argument.",
+)
+p.add_argument(
+    "--dataset",
+    type=str,
+    help="override if you want to use something else than HLE (needs to be in \
+the same format).",
+)
+p.add_argument(
+    "--num-questions",
+    type=int,
+    help="how many questions shall be selected randomly (if argument is not \
+given, all questions in the dataset are used). Please make sure not to \
+execute separate runs with this option provided and then compare the results, \
+as they would be non-representative due to their random nature.",
+)
+p.add_argument(
+    "--only-text",
+    action=argparse.BooleanOptionalAction,
+    help="whether to use the text-only subset of the dataset; useful if the \
+models provided are not multi-modal.",
+)
 
 
 logger = create_logger()
@@ -317,10 +351,11 @@ def main():
     The main function that manages the entire program flow.
     """
 
+    args = p.parse_args()
+
     run_uuid = str(uuid.uuid4())
     logger.info("run uuid is %s", run_uuid)
 
-    args = p.parse_args()
     models: "list[str]" = [model.strip() for model in args.model.split(",")]
 
     client = ollama.Client(

@@ -37,15 +37,17 @@ python3 ./src/eval.py --model=gemma3 --judge=llama3:8b --num-questions=150
 
 to begin the exam for the model! Results will also be written to an output file in the project root directory, ending in `.results.json`.
 
-**Tip**: You can specify several models separated by commata in order to make them compete against each other. You can - and must - only specify one judge model (the model that will rate the answers), and it's highly recommended to choose a model that isn't part of the models taking the exam.
+**Tip**: You can specify several models separated by commas in order to make them compete against each other. You can - and must - only specify one judge model (the model that will rate the answers), and it's highly recommended to choose a model that isn't part of the models taking the exam.
 
 **Important**: Do not just perform separate runs with `--num-questions` specified, as this will pick different, random questions from the dataset for each run individually. If you want to compare models with a limited number of questions, use the tip described above.
 
 **For text-only models** specify `--only-text` to only use the text subset of the HLE dataset.
 
-## Example results (non-representative)
+## Example results
 
 Below is a comparison of two commonly used models; they've been asked 100 questions from the text-only subset and the answers were judged by Phi-4 (14b) by Microsoft.
+
+**These are by no means professionally taken, high-quality results and thus not representative.**
 
 ```
 $ python3 ./src/eval.py --model=llama3:8b,mistral:7b --judge=phi4:latest --num-questions=100 --only-text

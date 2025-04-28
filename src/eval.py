@@ -216,6 +216,10 @@ def prompt_judge_model(
     correct or not.
     """
 
+    if not answer.strip():
+        # No answer at all - that's wrong.
+        return False
+
     while True:
         # (as long as the judge model is unsure and hasn't given a definitive
         # answer yet)

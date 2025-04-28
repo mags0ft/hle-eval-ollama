@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="./images/hle_logo.png" width=120>
+    <img src="./images/hle_logo.png" width=120 alt="Logo of Humanity's Last Exam on a white, circular background.">
 </p>
 
 # hle-eval-ollama
@@ -54,7 +54,9 @@ hle-eval-ollama: INFO - llama3:8b: 7 correct, 89 wrong (7.29 percent)
 hle-eval-ollama: INFO - mistral:7b: 13 correct, 83 wrong (13.54 percent)
 ```
 
-![Image comparing these results visually in a bar diagram.](./images/comparison.png)
+<p align="center">
+    <img src="./images/comparison.png" width=512 alt="Image comparing these results visually in a bar diagram.">
+</p>
 
 ## Environment variables
 

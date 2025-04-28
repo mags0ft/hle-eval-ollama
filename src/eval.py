@@ -32,7 +32,6 @@ commas.",
 p.add_argument(
     "--judge",
     type=str,
-    required=True,
     help="the model to be used for judging the other model's responses when \
 given the correct answer. It is recommended not to use a model of a family \
 already present in the --model argument.",
@@ -56,6 +55,16 @@ p.add_argument(
     action=argparse.BooleanOptionalAction,
     help="whether to use the text-only subset of the dataset; useful if the \
 models provided are not multi-modal.",
+)
+p.add_argument(
+    "--skip-judge",
+    action=argparse.BooleanOptionalAction,
+    help="whether to skip judging the responses (just writes them to a file).",
+)
+p.add_argument(
+    "--add-question-info",
+    action=argparse.BooleanOptionalAction,
+    help="whether to add question and correct answer to the output file.",
 )
 
 
@@ -303,7 +312,11 @@ def judge_answers(
 
 
 def generate_anwers(
-    models: "list[str]", client: ollama.Client, questions, glob_res: Result
+    models: "list[str]",
+    client: ollama.Client,
+    questions,
+    glob_res: Result,
+    add_question_info: bool = False,
 ):
     """
     Prompts the models for answers to the questions in the dataset one by one.
@@ -323,6 +336,14 @@ def generate_anwers(
                     "answer": answer,
                     "correct": False,  # we do not know this yet!
                 }
+
+                if add_question_info:
+                    res.answers[question["id"]].update(
+                        {
+                            "question_text": question["question"],
+                            "correct_answer": question["answer"],
+                        }
+                    )
             except Exception as e:  # pylint: disable=broad-exception-caught
                 # Rare, but possible!
                 logger.error("An error occured! %s", e)
@@ -365,6 +386,14 @@ def main():
 
     args = p.parse_args()
 
+    assert (not args.skip_judge) or (
+        args.skip_judge and not args.judge
+    ), "cannot specify a judge when --skip-judge is given."
+
+    assert (
+        (args.skip_judge) or (not args.skip_judge) and args.judge
+    ), "judge model needs to be specified."
+
     run_uuid = str(uuid.uuid4())
     logger.info("run uuid is %s", run_uuid)
 
@@ -395,10 +424,16 @@ def main():
     glob_res = Result(models=models)
 
     logger.info("prompting models for answers")
-    generate_anwers(models, client, questions, glob_res)
+    generate_anwers(
+        models, client, questions, glob_res, args.add_question_info
+    )
 
     logger.info("temporarily saving results")
     write_result_file(run_uuid, glob_res)
+
+    if args.skip_judge:
+        logger.info("--skip-judge specified, leaving")
+        return
 
     logger.info("judging model answers")
     judge_answers(args, models, client, questions, glob_res)

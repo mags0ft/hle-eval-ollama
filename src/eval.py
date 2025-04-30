@@ -190,6 +190,16 @@ def write_result_file(run_id: str, result: Result) -> None:
         )
 
 
+def remove_thinking(answer: str) -> str:
+    """
+    Removes the thinking sequence of reasoning models.
+    """
+
+    thinking_part_end: int = answer.find("</think>")
+
+    return answer[(thinking_part_end + 8 if thinking_part_end != -1 else 0) :]
+
+
 def prompt_model(client, model, question) -> ollama.ChatResponse:
     """
     Prompts a given model with a question.
@@ -327,7 +337,7 @@ def generate_anwers(
             try:
                 response = prompt_model(client, model, question)
 
-                answer: str = response["message"]["content"]
+                answer: str = remove_thinking(response["message"]["content"])
 
                 res.answers[question["id"]] = {
                     "answer": answer,

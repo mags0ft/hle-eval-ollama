@@ -12,6 +12,9 @@ This repo aims to **allow anyone to get up and running with [Humanity's Last Exa
 
 The official repo with evaluation scripts by HLE is notoriously hard to use, only lightly documented and merely made to work with the OpenAI API. Re-writing it to work with more AI inference providers and APIs would only add more complexity, which is **why I chose to create this repository**.
 
+> [!IMPORTANT]  
+> The whole quality of the benchmark results bases on how good the judge model does its job. If it judges poorly, good models might look worse and bad models better. Make sure to choose a strong model and verify results yourself.
+
 ## How to use it
 
 It's luckily simple! First of all, make sure to have a [Hugging Face](https://huggingface.co/) account. The HLE dataset is **gated**, which means that you will need to authenticate in order to use it. You may want to visit the [HLE page](https://huggingface.co/datasets/cais/hle) on Hugging Face and agree to your information being submitted.

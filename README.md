@@ -15,6 +15,9 @@ The official repo with evaluation scripts by HLE is notoriously hard to use, onl
 > [!IMPORTANT]  
 > The whole quality of the benchmark results bases on how good the judge model does its job. If it judges poorly, good models might look worse and bad models better. Make sure to choose a strong model and verify results yourself.
 
+> [!WARNING]  
+> There are ongoing problems with the quality of the judge model's responses. Often, answers are still misjudged. Please exercise caution or manually review until cutting-edge models are able to correctly identify correct and wrong responses consistently.
+
 ## How to use it
 
 It's luckily simple! First of all, make sure to have a [Hugging Face](https://huggingface.co/) account. The HLE dataset is **gated**, which means that you will need to authenticate in order to use it. You may want to visit the [HLE page](https://huggingface.co/datasets/cais/hle) on Hugging Face and agree to your information being submitted.

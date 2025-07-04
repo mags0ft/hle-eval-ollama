@@ -18,7 +18,6 @@ from logger import create_logger
 
 
 p = argparse.ArgumentParser(
-    "hle-eval-ollama",
     description="A simple-to-use evaluation program to get up and running \
 with Humanity's Last Exam and Ollama models.",
 )

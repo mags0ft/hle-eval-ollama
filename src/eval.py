@@ -279,10 +279,9 @@ def finalize_result(glob_res: Result):
         correct_answers = sum(
             (1 if el["correct"] else 0) for el in res.answers.values()
         )
-        wrong_answers = total_answers - correct_answers
 
         res.correct = correct_answers
-        res.wrong = wrong_answers
+        res.wrong = total_answers - correct_answers
 
 
 def judge_answers(
@@ -300,6 +299,7 @@ def judge_answers(
     for model in models:
         logger.info("judging %s's responses", model)
         model_results = glob_res.model_results[model]
+        is_correct = False
 
         for question in tqdm.tqdm(questions):
             try:
@@ -365,6 +365,7 @@ def print_results(models: "list[str]", glob_res: Result):
 
     for model in models:
         model_results = glob_res.model_results[model]
+        total_results = model_results.correct + model_results.wrong
         logger.info(
             "%s: %s correct, %s wrong (%s percent)",
             model,
@@ -374,9 +375,8 @@ def print_results(models: "list[str]", glob_res: Result):
                 100
                 * (
                     (
-                        model_results.correct
-                        / (model_results.correct + model_results.wrong)
-                        if (model_results.correct + model_results.wrong) != 0
+                        model_results.correct / (total_results)
+                        if (total_results) != 0
                         else 0
                     )
                 ),

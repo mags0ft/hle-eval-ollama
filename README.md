@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="./images/hle_logo.png" width=120 alt="Logo of Humanity's Last Exam on a white, circular background.">
+    <img src="./images/showcase.webp" alt="Logo of Humanity's Last Exam on a white, circular background.">
 </p>
 
 # hle-eval-ollama

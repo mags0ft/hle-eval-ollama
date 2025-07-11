@@ -11,10 +11,10 @@ import uuid
 import argparse
 import os
 
-from backends import BACKEND_NAMES, Backend
 import datasets
 import tqdm
 
+from backends import BACKEND_NAMES, Backend
 from logger import create_logger
 from constants import (
     ERROR_TIMEOUT,
@@ -195,7 +195,6 @@ def judge_answers(
                         "answer"
                     ],  # type: ignore
                     correct_answer=question["answer"],
-                    logger=logger,
                 )
             except KeyError as e:
                 logger.error("KeyError: %s", e)

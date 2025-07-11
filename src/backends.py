@@ -1,3 +1,8 @@
+"""
+This module is responsible for defining the backends used to communicate with
+the models.
+"""
+
 import base64
 from io import BytesIO
 import json
@@ -6,6 +11,8 @@ import time
 from types import NoneType
 from typing import Any, Dict, List, Union
 
+import ollama
+import openai
 
 from constants import (
     ERROR_TIMEOUT,
@@ -17,10 +24,6 @@ from constants import (
     SYSTEM_MC,
     USE_EXPERIMENTAL_IMAGE_UPLOAD,
 )
-import logger
-
-import ollama
-import openai
 
 
 MessagesType = List[Dict[str, Any]]
@@ -32,7 +35,7 @@ class Backend:
     A base class for backends that can be used to query models.
     """
 
-    def __init__(self, endpoint: str, api_key: str):
+    def __init__(self, endpoint: str, api_key: str, logger: logging.Logger):
         """
         Initializes the backend with the given endpoint and API key.
         """
@@ -40,13 +43,14 @@ class Backend:
         self.endpoint = endpoint
         self.api_key = api_key
         self._client = None
+        self.logger = logger
 
     def _query_function(
         self,
         model: str,
         messages: MessagesType,
         num_predict: int,
-        format: Union[SchemaType, NoneType] = None,
+        format_: Union[SchemaType, NoneType] = None,
     ):
         """
         A function that queries the model with the given messages and returns
@@ -98,7 +102,6 @@ class Backend:
         question: Dict[str, str],
         model_answer: str,
         correct_answer: str,
-        logger: logging.Logger,
     ) -> bool:
         """
         Prompts a judge model with the question, the response and the correct
@@ -106,8 +109,8 @@ class Backend:
         """
 
         while True:
-            # (as long as the judge model is unsure and hasn't given a definitive
-            # answer yet)
+            # (as long as the judge model is unsure and hasn't given a
+            # definitive answer yet)
 
             try:
                 response = self._query_function(
@@ -123,12 +126,12 @@ class Backend:
                         },
                     ],
                     num_predict=MAX_TOKENS_JUDGE,
-                    format=JUDGE_FORMAT,
+                    format_=JUDGE_FORMAT,
                 )
 
                 return json.loads(response)["is_answer_correct"]
             except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Error while judging: %s", e)
+                self.logger.error("Error while judging: %s", e)
                 time.sleep(ERROR_TIMEOUT)
 
 
@@ -137,12 +140,12 @@ class OllamaBackend(Backend):
     A backend that uses the Ollama API to query models.
     """
 
-    def __init__(self, endpoint: str, api_key: str):
+    def __init__(self, endpoint: str, api_key: str, logger: logging.Logger):
         """
         Initializes the Ollama backend with the given endpoint and API key.
         """
 
-        super().__init__(endpoint, api_key if api_key else "ollama")
+        super().__init__(endpoint, api_key if api_key else "ollama", logger)
 
         self._client = ollama.Client(
             host=endpoint,
@@ -154,7 +157,7 @@ class OllamaBackend(Backend):
         model: str,
         messages: MessagesType,
         num_predict: int,
-        format: Union[SchemaType, NoneType] = None,
+        format_: Union[SchemaType, NoneType] = None,
     ) -> str:
         """
         Queries the Ollama model with the given messages and returns the
@@ -165,13 +168,13 @@ class OllamaBackend(Backend):
             model=model,
             messages=messages,
             options={"num_predict": num_predict},
-            format=format,
+            format=format_,
         )
 
-        if not response or not response.message.content:
+        if not response or not response["message"]["content"]:
             return ""
 
-        return response.message.content
+        return response["message"]["content"]
 
 
 class OpenAIBackend(Backend):
@@ -179,12 +182,12 @@ class OpenAIBackend(Backend):
     A backend that uses the OpenAI API to query models.
     """
 
-    def __init__(self, endpoint: str, api_key: str):
+    def __init__(self, endpoint: str, api_key: str, logger: logging.Logger):
         """
         Initializes the OpenAI backend with the given endpoint and API key.
         """
 
-        super().__init__(endpoint, (api_key if api_key else "ollama"))
+        super().__init__(endpoint, (api_key if api_key else "ollama"), logger)
 
         self._client = openai.OpenAI(base_url=endpoint, api_key=self.api_key)
         print("openai backend used")
@@ -194,7 +197,7 @@ class OpenAIBackend(Backend):
         model: str,
         messages: MessagesType,
         num_predict: int,
-        format: Union[SchemaType, NoneType] = None,
+        format_: Union[SchemaType, NoneType] = None,
     ) -> str:
         """
         Queries the OpenAI model with the given messages and returns the
@@ -237,7 +240,9 @@ class OpenAIBackend(Backend):
                                 {
                                     "type": "image_url",
                                     "image_url": {
-                                        "url": f"data:image/jpeg;base64,{message['images'][0]}"
+                                        "url": f"data:image/jpeg;base64,{
+                                            message['images'][0]
+                                        }"
                                     },
                                 },
                             ],
@@ -257,7 +262,7 @@ class OpenAIBackend(Backend):
                 "type": "json_schema",
                 "json_schema": {
                     "name": "judge_response_schema",
-                    "schema": format,
+                    "schema": format_,
                 },
             },  # type: ignore
         )

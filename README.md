@@ -8,7 +8,7 @@
     <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/mags0ft/hle-eval-ollama/pylint.yml?style=for-the-badge&logo=python&labelColor=%231e1e1e" />
 </p>
 
-This repo aims to **allow anyone to get up and running with [Humanity's Last Exam](https://lastexam.ai/) and Ollama locally**.
+This repo aims to **allow anyone to get up and running with [Humanity's Last Exam](https://lastexam.ai/) and Ollama or any other OpenAI API compatible endpoint locally**.
 
 The official repo with evaluation scripts by HLE is notoriously hard to use, understand and maintain due to being only lightly documented and merely made to work with the OpenAI API. This is why I chose to create this project, which now also supports OpenAI API endpoints.
 

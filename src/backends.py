@@ -232,6 +232,7 @@ class OpenAIBackend(Backend):
                         }
                     )
                 else:
+                    url = f"data:image/jpeg;base64,{message['images'][0]}"
                     converted_messages.append(
                         {
                             "role": message["role"],
@@ -240,9 +241,7 @@ class OpenAIBackend(Backend):
                                 {
                                     "type": "image_url",
                                     "image_url": {
-                                        "url": f"data:image/jpeg;base64,{
-                                            message['images'][0]
-                                        }"
+                                        "url": url
                                     },
                                 },
                             ],

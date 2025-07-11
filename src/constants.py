@@ -10,6 +10,8 @@ MAX_TOKENS_JUDGE: int = 2**12
 
 ERROR_TIMEOUT: int = 3  # in seconds; wait period before next request is sent
 
+USE_EXPERIMENTAL_IMAGE_UPLOAD: bool = False
+
 # taken from line 11-13,
 # https://github.com/centerforaisafety/hle
 SYSTEM_EXACT_ANSWER = """Your response should be in the following format:\n\

@@ -2,7 +2,6 @@ import base64
 from io import BytesIO
 import json
 import logging
-import os
 import time
 from types import NoneType
 from typing import Any, Dict, List, Union
@@ -16,6 +15,7 @@ from constants import (
     MAX_TOKENS_JUDGE,
     SYSTEM_EXACT_ANSWER,
     SYSTEM_MC,
+    USE_EXPERIMENTAL_IMAGE_UPLOAD,
 )
 import logger
 
@@ -81,7 +81,7 @@ class Backend:
                     else SYSTEM_MC
                 ),
             },
-            {"role": "user", "content": question["text"]},
+            user_message,
         ]
 
         response = self._query_function(
@@ -126,9 +126,7 @@ class Backend:
                     format=JUDGE_FORMAT,
                 )
 
-                return json.loads(response)[
-                    "is_answer_correct"
-                ]
+                return json.loads(response)["is_answer_correct"]
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error while judging: %s", e)
                 time.sleep(ERROR_TIMEOUT)
@@ -147,11 +145,8 @@ class OllamaBackend(Backend):
         super().__init__(endpoint, api_key if api_key else "ollama")
 
         self._client = ollama.Client(
-            host=os.getenv("HLE_OLLAMA_HOST", "http://localhost:11434"),
-            headers={
-                "Authentication": f"Bearer \
-{os.getenv('HLE_OLLAMA_TOKEN', 'ollama')}"
-            },
+            host=endpoint,
+            headers={"Authentication": f"Bearer {self.api_key}"},
         )
 
     def _query_function(
@@ -189,12 +184,10 @@ class OpenAIBackend(Backend):
         Initializes the OpenAI backend with the given endpoint and API key.
         """
 
-        super().__init__(endpoint, api_key)
+        super().__init__(endpoint, (api_key if api_key else "ollama"))
 
-        self._client = openai.OpenAI(
-            base_url=endpoint,
-            api_key=api_key
-        )
+        self._client = openai.OpenAI(base_url=endpoint, api_key=self.api_key)
+        print("openai backend used")
 
     def _query_function(
         self,
@@ -212,38 +205,61 @@ class OpenAIBackend(Backend):
 
         for message in messages:
             if "images" in message and len(message["images"]) > 0:
-                image_data = base64.b64decode(message["images"][0].split(",", 1)[1])
-                image_file = BytesIO(image_data)
-                image_file.name = "image.jpg"
-                file = openai.files.create(file=image_file, purpose="vision")
-                file_id = file.id
+                if USE_EXPERIMENTAL_IMAGE_UPLOAD:
+                    image_data = base64.b64decode(
+                        message["images"][0].split(",", 1)[-1]
+                    )
+                    image_file = BytesIO(image_data)
+                    image_file.name = "image.jpg"
+                    file = openai.files.create(
+                        file=image_file, purpose="vision"
+                    )
+                    file_id = file.id
 
-                converted_messages.append({
-                    "role": message["role"],
-                    "content": [
-                        {"type": "text", "text": message["content"]},
-                        {"type": "image_file", "image_file": {"file_id": file_id}},
-                    ],
-                })
-            
+                    converted_messages.append(
+                        {
+                            "role": message["role"],
+                            "content": [
+                                {"type": "text", "text": message["content"]},
+                                {
+                                    "type": "image_file",
+                                    "image_file": {"file_id": file_id},
+                                },
+                            ],
+                        }
+                    )
+                else:
+                    converted_messages.append(
+                        {
+                            "role": message["role"],
+                            "content": [
+                                {"type": "text", "text": message["content"]},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{message['images'][0]}"
+                                    },
+                                },
+                            ],
+                        }
+                    )
+
             else:
-                converted_messages.append({
-                    "role": message["role"],
-                    "content": message["content"]
-                })
+                converted_messages.append(
+                    {"role": message["role"], "content": message["content"]}
+                )
 
         response = self._client.chat.completions.create(
             model=model,
-            messages=messages, # type: ignore
+            messages=messages,  # type: ignore
             max_tokens=num_predict,
             response_format={
-            "type": "json_schema",
-            "json_schema": 
-                {
-                    "name":"judge_response_schema", 
-                    "schema": format
-                }
-            } , # type: ignore
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "judge_response_schema",
+                    "schema": format,
+                },
+            },  # type: ignore
         )
 
         if not response or not response.choices[0].message.content:

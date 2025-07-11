@@ -18,13 +18,7 @@ import tqdm
 from logger import create_logger
 from constants import (
     ERROR_TIMEOUT,
-    MAX_TOKENS_ANSWER,
-    MAX_TOKENS_JUDGE,
     STD_DATASET,
-    SYSTEM_EXACT_ANSWER,
-    SYSTEM_MC,
-    JUDGE_PROMPT,
-    JUDGE_FORMAT,
 )
 
 
@@ -159,75 +153,6 @@ def remove_thinking(answer: str) -> str:
     return answer[(thinking_part_end + 8 if thinking_part_end != -1 else 0) :]
 
 
-def prompt_model(client, model, question) -> str:
-    """
-    Prompts a given model with a question.
-    """
-
-    user_message = {"role": "user", "content": question["question"]}
-
-    if question["image"]:
-        # attach an image if there is one in the question
-        user_message["images"] = [question["image"].split(",")[-1]]
-
-    response = client.chat(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    SYSTEM_EXACT_ANSWER
-                    if question["answer_type"] == "exactMatch"
-                    else SYSTEM_MC
-                ),
-            },
-            user_message,
-        ],
-        options={"num_predict": MAX_TOKENS_ANSWER},
-    )
-
-    return response["message"]["content"]
-
-
-def prompt_judge_model(
-    client, model, question, answer, actual_response
-) -> bool:
-    """
-    Prompts a third party about whether the answer to a given question is
-    correct or not.
-    """
-
-    if not answer.strip():
-        # No answer at all - that's wrong.
-        return False
-
-    while True:
-        # (as long as the judge model is unsure and hasn't given a definitive
-        # answer yet)
-
-        try:
-            response = client.chat(
-                model=model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": JUDGE_PROMPT.format(
-                            question=question,
-                            correct_answer=answer,
-                            response=actual_response,
-                        ),
-                    },
-                ],
-                options={"num_predict": MAX_TOKENS_JUDGE},
-                format=JUDGE_FORMAT,
-            )
-
-            return json.loads(response.message.content)["is_answer_correct"]
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Error while judging: %s", e)
-            time.sleep(ERROR_TIMEOUT)
-
-
 def finalize_result(glob_res: Result):
     """
     Finalizes the results by counting wrong and correct answers, then writes
@@ -268,7 +193,7 @@ def judge_answers(
                     question=question["question"],
                     model_answer=model_results.answers[question["id"]][
                         "answer"
-                    ], # type: ignore
+                    ],  # type: ignore
                     correct_answer=question["answer"],
                     logger=logger,
                 )
@@ -368,7 +293,14 @@ def main():
     models: "list[str]" = [model.strip() for model in args.model.split(",")]
 
     backend: Backend = BACKEND_NAMES[args.backend](
-        endpoint=os.getenv("HLE_EVAL_ENDPOINT", "http://localhost:11434"),
+        endpoint=os.getenv(
+            "HLE_EVAL_ENDPOINT",
+            (
+                "http://localhost:11434"
+                if args.backend == "ollama"
+                else "http://localhost:11434/v1"
+            ),
+        ),
         api_key=os.getenv("HLE_EVAL_API_KEY", ""),
     )
 

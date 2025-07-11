@@ -2,7 +2,7 @@
     <img src="./images/hle_logo.png" width=120 alt="Logo of Humanity's Last Exam on a white, circular background.">
 </p>
 
-# hle-eval-ollama
+<h1 align="center">hle-eval-ollama</h1>
 
 <p align="center">
     <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/mags0ft/hle-eval-ollama/pylint.yml?style=for-the-badge&logo=python&labelColor=%231e1e1e" />

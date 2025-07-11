@@ -7,7 +7,7 @@ import logging
 
 def create_logger() -> logging.Logger:
     """
-    Creates a logger.
+    Creates the logger for the Jace application.
     """
 
     logger = logging.Logger("hle-eval-ollama")
@@ -15,6 +15,7 @@ def create_logger() -> logging.Logger:
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s: %(levelname)s - %(message)s"
     )
+
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 

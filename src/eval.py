@@ -4,7 +4,7 @@ Evaluation script to run "Humanity's Last Exam" on Ollama models.
 
 import random
 import time
-from typing import Union
+from typing import Any, Union
 import json
 import dataclasses
 import uuid
@@ -18,7 +18,6 @@ from logger import create_logger
 
 
 p = argparse.ArgumentParser(
-    "hle-eval-ollama",
     description="A simple-to-use evaluation program to get up and running \
 with Humanity's Last Exam and Ollama models.",
 )
@@ -84,47 +83,50 @@ ERROR_TIMEOUT: int = 3  # in seconds; wait period before next request is sent
 # https://github.com/centerforaisafety/hle
 SYSTEM_EXACT_ANSWER = """Your response should be in the following format:\n\
 Explanation: {your explanation for your final answer}\nExact Answer: {your \
-succinct, final answer}\nConfidence: {your confidence score between 0% and \
-100% for your answer}"""
+succinct, final answer}"""
 
 SYSTEM_MC = """Your response should be in the following format:\nExplanation: \
-{your explanation for your answer choice}\nAnswer: {your chosen answer}\n\
-Confidence: {your confidence score between 0% and 100% for your answer}"""
+{your explanation for your answer choice}\nAnswer: {your chosen answer}\n"""
 
 
-# taken from line 16-33,
+# taken partly from line 16-33,
 # https://github.com/centerforaisafety/hle
-JUDGE_PROMPT = """Judge whether the following [response] to [question] is \
-correct or not based on the precise and unambiguous [correct_answer] below.
-You are correcting an exam. Given a question and the student's response, judge
-whether it matches the [correct_answer] below.
+JUDGE_PROMPT = """You're a teacher correcting a student's exam. You are given \
+the [exam question], the [student's response] and the known, [correct answer] \
+to compare it to.
 
-[question]: {question}
+[exam question]: {question}
 
-[response]: {response}
+=== === ===
 
-Please extract the FINAL, EXACT answer by the student from the text [response].
+[student's response]: {response}
 
-Now, look at the actual, correct solution:
+=== === ===
 
-[correct_answer]: {correct_answer}
+[correct answer]: {correct_answer}
 
-After reading the [correct_answer], please judge: is the student's [response]
-correct?
+=== === ===
 
-Please explain why the final answer in [response] is correct or incorrect based
-on [correct_answer], focusing only on if there are meaningful differences \
-between [correct_answer] and the extracted final answer. Do not comment on \
-any background to the problem, do not attempt to solve the problem, do not \
-argue for any answer different than [correct_answer], focus only on whether \
-the answers match.
+Please extract the exact, final answer from the [student's response]. Then,
+given the [correct answer], judge whether that final answer is correct or \
+not, focusing only on if there are meaningful differences between \
+[correct answer] and the extracted student's final answer.
 
-Then, also answer 'YES, CORRECT' if the extracted final answer matches the \
-[correct_answer] given above, or is within a small margin of error for \
-numerical problems. Answer 'NO, INCORRECT' otherwise, i.e. if there if there \
-is any inconsistency, ambiguity, non-equivalency, or if the extracted answer \
-is incorrect.
+DO NOT comment on any background to the problem, DO NOT attempt to solve the \
+problem, DO NOT argue for any answer different than [correct answer], focus \
+only on whether the answers match.
+
+Respond in valid JSON.
 """
+
+JUDGE_FORMAT: "dict[str, Any]" = {
+    "type": "object",
+    "properties": {
+        "extracted_final_answer": {"type": "string"},
+        "is_answer_correct": {"type": "boolean"},
+    },
+    "required": ["extracted_final_answer", "is_answer_correct"],
+}
 
 
 @dataclasses.dataclass
@@ -187,6 +189,16 @@ def write_result_file(run_id: str, result: Result) -> None:
         )
 
 
+def remove_thinking(answer: str) -> str:
+    """
+    Removes the thinking sequence of reasoning models.
+    """
+
+    thinking_part_end: int = answer.find("</think>")
+
+    return answer[(thinking_part_end + 8 if thinking_part_end != -1 else 0) :]
+
+
 def prompt_model(client, model, question) -> ollama.ChatResponse:
     """
     Prompts a given model with a question.
@@ -247,16 +259,10 @@ def prompt_judge_model(
                     },
                 ],
                 options={"num_predict": MAX_TOKENS_JUDGE},
+                format=JUDGE_FORMAT,
             )
 
-            text = response["message"]["content"]
-
-            if "yes, correct" in text.lower():
-                # this answer seems to be correct
-                return True
-            if "no, incorrect" in text.lower():
-                # there seems to be a mistake or error in the answer
-                return False
+            return json.loads(response.message.content)["is_answer_correct"]
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Error while judging: %s", e)
             time.sleep(ERROR_TIMEOUT)
@@ -273,10 +279,9 @@ def finalize_result(glob_res: Result):
         correct_answers = sum(
             (1 if el["correct"] else 0) for el in res.answers.values()
         )
-        wrong_answers = total_answers - correct_answers
 
         res.correct = correct_answers
-        res.wrong = wrong_answers
+        res.wrong = total_answers - correct_answers
 
 
 def judge_answers(
@@ -294,6 +299,7 @@ def judge_answers(
     for model in models:
         logger.info("judging %s's responses", model)
         model_results = glob_res.model_results[model]
+        is_correct = False
 
         for question in tqdm.tqdm(questions):
             try:
@@ -330,7 +336,7 @@ def generate_anwers(
             try:
                 response = prompt_model(client, model, question)
 
-                answer: str = response["message"]["content"]
+                answer: str = remove_thinking(response["message"]["content"])
 
                 res.answers[question["id"]] = {
                     "answer": answer,
@@ -359,6 +365,7 @@ def print_results(models: "list[str]", glob_res: Result):
 
     for model in models:
         model_results = glob_res.model_results[model]
+        total_results = model_results.correct + model_results.wrong
         logger.info(
             "%s: %s correct, %s wrong (%s percent)",
             model,
@@ -368,9 +375,8 @@ def print_results(models: "list[str]", glob_res: Result):
                 100
                 * (
                     (
-                        model_results.correct
-                        / (model_results.correct + model_results.wrong)
-                        if (model_results.correct + model_results.wrong) != 0
+                        model_results.correct / (total_results)
+                        if (total_results) != 0
                         else 0
                     )
                 ),

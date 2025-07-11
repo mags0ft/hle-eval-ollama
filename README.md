@@ -2,7 +2,7 @@
     <img src="./images/showcase.webp" alt="Logo of Humanity's Last Exam on a white, circular background.">
 </p>
 
-# hle-eval-ollama
+<h1 align="center">hle-eval-ollama</h1>
 
 <p align="center">
     <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/mags0ft/hle-eval-ollama/pylint.yml?style=for-the-badge&logo=python&labelColor=%231e1e1e" />
@@ -11,6 +11,12 @@
 This repo aims to **allow anyone to get up and running with [Humanity's Last Exam](https://lastexam.ai/) and Ollama locally**.
 
 The official repo with evaluation scripts by HLE is notoriously hard to use, only lightly documented and merely made to work with the OpenAI API. Re-writing it to work with more AI inference providers and APIs would only add more complexity, which is **why I chose to create this repository**.
+
+> [!IMPORTANT]  
+> The whole quality of the benchmark results bases on how good the judge model does its job. If it judges poorly, good models might look worse and bad models better. Make sure to choose a strong model and verify results yourself.
+
+> [!WARNING]  
+> There are ongoing problems with the quality of the judge model's responses. Often, answers are still misjudged. Please exercise caution or manually review until cutting-edge models are able to correctly identify correct and wrong responses consistently.
 
 ## How to use it
 

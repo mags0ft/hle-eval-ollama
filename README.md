@@ -14,8 +14,7 @@ The official repo with evaluation scripts by HLE is notoriously hard to use, onl
 
 > [!IMPORTANT]  
 > The whole quality of the benchmark results bases on how good the judge model does its job. If it judges poorly, good models might look worse and bad models better. Make sure to choose a strong model and verify results yourself.
-
-> [!WARNING]  
+>
 > There are ongoing problems with the quality of the judge model's responses. Often, answers are still misjudged. Please exercise caution or manually review until cutting-edge models are able to correctly identify correct and wrong responses consistently.
 
 ## How to use it
@@ -49,6 +48,11 @@ to begin the exam for the model! Results will also be written to an output file 
 
 **For text-only models** specify `--only-text` to only use the text subset of the HLE dataset.
 
+> [!TIP]
+> You can also use any OpenAI API compatible endpoint by providing the `--backend=openai` flag. Make sure to set the `HLE_EVAL_API_KEY` and `HLE_EVAL_ENDPOINT` environment variables.
+>
+> **PLEASE NOTE** that image input (vision) is still unstable for OpenAI endpoints - while it works, it consumes an absurd amount of tokens (which you may be billed for!) and is not recommended for use. You can use a lighter variant by setting `USE_EXPERIMENTAL_IMAGE_UPLOAD` to `True` in `src/constants.py`, but this does not work for every endpoint.
+
 ## Example results
 
 Below is a comparison of two commonly used models; they've been asked 100 questions from the text-only subset and the answers were judged by Phi-4 (14b) by Microsoft.
@@ -68,8 +72,8 @@ hle-eval-ollama: INFO - mistral:7b: 13 correct, 83 wrong (13.54 percent)
 
 ## Environment variables
 
-- `HLE_OLLAMA_HOST`: specifies the Ollama host to connect to.
-- `HLE_OLLAMA_TOKEN`: specifies the Bearer token to use for Ollama authentication.
+- `HLE_EVAL_ENDPOINT`: specifies the host to connect to.
+- `HLE_EVAL_API_KEY`: specifies the Bearer token to use for authentication.
 
 ## Thanks
 

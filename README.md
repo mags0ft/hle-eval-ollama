@@ -10,7 +10,7 @@
 
 This repo aims to **allow anyone to get up and running with [Humanity's Last Exam](https://lastexam.ai/) (or similar benchmarks!) and Ollama locally**.
 
-The official repo with evaluation scripts by HLE is notoriously hard to use, only lightly documented and merely made to work with the OpenAI API. While Ollama exposes an OpenAI API compatible endpoint, this project aims for a two-way approach, also featuring pure, Ollama-agnostic API calls to show what's possible.
+The official repo with evaluation scripts by HLE is notoriously hard to use, only lightly documented and merely made to work with the OpenAI API. While Ollama exposes an OpenAI API compatible endpoint, this project aims for a two-way approach, featuring both a pure, Ollama-agnostic API implementation and an OpenAI API compatible backend to show what's possible.
 
 > [!IMPORTANT]  
 > The whole quality of the benchmark results bases on how good the judge model does its job. If it judges poorly, good models might look worse and bad models better. Make sure to choose a strong model and verify results yourself.

@@ -1,4 +1,4 @@
 [MASTER]
 
 [FORMAT]
-max-line-length=79
+max-line-length=79 # to conform to PEP8

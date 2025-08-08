@@ -72,6 +72,8 @@ hle-eval-ollama: INFO - mistral:7b: 13 correct, 83 wrong (13.54 percent)
     <img src="./images/comparison.png" width=512 alt="Image comparing these results visually in a bar diagram.">
 </p>
 
+_Note: these benchmark results have been captured using automatic response judging, which - as mentioned above - is still relatively unreliable. The results are not representative and shall not be cited._
+
 ## Environment variables
 
 - `HLE_EVAL_ENDPOINT`: specifies the host to connect to.

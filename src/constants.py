@@ -6,6 +6,7 @@ those to your needs.
 from typing import Any
 
 
+# Enter your desired Hugging Face dataset here
 STD_DATASET: str = "cais/hle"
 
 # Maximum number of tokens in an answer: ~8k
@@ -13,8 +14,9 @@ MAX_TOKENS_ANSWER: int = 2**13
 # Maximum number of tokens when judging: ~4k
 MAX_TOKENS_JUDGE: int = 2**12
 
-ERROR_TIMEOUT: int = 3  # in seconds; wait period before next request is sent
+ERROR_TIMEOUT: int = 10  # in seconds; wait period before next request is sent
 
+# refer to README for this setting:
 USE_EXPERIMENTAL_IMAGE_UPLOAD: bool = False
 
 # taken from line 11-13,

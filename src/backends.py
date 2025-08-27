@@ -29,7 +29,7 @@ from constants import (
 MessagesType = List[Dict[str, Any]]
 SchemaType = Dict[str, Any]
 
-BASE64_IMAGE_URL = f"data:image/jpeg;base64,"
+BASE64_IMAGE_URL = "data:image/jpeg;base64,"
 
 
 class Backend:

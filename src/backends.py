@@ -29,6 +29,8 @@ from constants import (
 MessagesType = List[Dict[str, Any]]
 SchemaType = Dict[str, Any]
 
+BASE64_IMAGE_URL = f"data:image/jpeg;base64,"
+
 
 class Backend:
     """
@@ -132,6 +134,8 @@ class Backend:
                 return json.loads(response)["is_answer_correct"]
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.error("Error while judging: %s", e)
+                self.logger.info("Retrying in %s seconds...", ERROR_TIMEOUT)
+
                 time.sleep(ERROR_TIMEOUT)
 
 
@@ -232,7 +236,7 @@ class OpenAIBackend(Backend):
                         }
                     )
                 else:
-                    url = f"data:image/jpeg;base64,{message['images'][0]}"
+                    url = BASE64_IMAGE_URL + message['images'][0]
                     converted_messages.append(
                         {
                             "role": message["role"],

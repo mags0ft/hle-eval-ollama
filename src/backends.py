@@ -176,7 +176,7 @@ class OllamaBackend(Backend):
         )
 
         if not response or not response["message"]["content"]:
-            return ""
+            raise ValueError("Model did not respond with a message")
 
         return response["message"]["content"]
 
@@ -271,7 +271,7 @@ class OpenAIBackend(Backend):
         )
 
         if not response or not response.choices[0].message.content:
-            return ""
+            raise ValueError("Model did not respond with a message")
 
         return response.choices[0].message.content
 

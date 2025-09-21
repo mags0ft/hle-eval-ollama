@@ -29,7 +29,7 @@ from constants import (
 MessagesType = List[Dict[str, Any]]
 SchemaType = Dict[str, Any]
 
-BASE64_IMAGE_URL = f"data:image/jpeg;base64,"
+BASE64_IMAGE_URL = "data:image/jpeg;base64,"
 
 
 class Backend:
@@ -236,7 +236,7 @@ class OpenAIBackend(Backend):
                         }
                     )
                 else:
-                    url = BASE64_IMAGE_URL + message['images'][0]
+                    url = BASE64_IMAGE_URL + message["images"][0]
                     converted_messages.append(
                         {
                             "role": message["role"],
@@ -244,9 +244,7 @@ class OpenAIBackend(Backend):
                                 {"type": "text", "text": message["content"]},
                                 {
                                     "type": "image_url",
-                                    "image_url": {
-                                        "url": url
-                                    },
+                                    "image_url": {"url": url},
                                 },
                             ],
                         }

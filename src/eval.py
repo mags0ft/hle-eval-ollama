@@ -130,7 +130,7 @@ def write_result_file(run_id: str, result: Result) -> None:
                         "wrong": res.wrong,
                         "total": res.correct + res.wrong,
                         "ratio": (
-                            (res.correct / (res.correct + res.wrong))
+                            round(res.correct / (res.correct + res.wrong), 2)
                             if (res.correct + res.wrong != 0)
                             else 0
                         ),

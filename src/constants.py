@@ -1,3 +1,8 @@
+"""
+This file contains widely used constants for the tool. You may tweak some of
+those to your needs.
+"""
+
 from typing import Any
 
 

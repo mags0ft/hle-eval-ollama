@@ -4,17 +4,22 @@ Evaluation script to run "Humanity's Last Exam" on Ollama models.
 
 import random
 import time
-from typing import Any, Union
+from typing import Union
 import json
 import dataclasses
 import uuid
 import argparse
 import os
-import ollama
 
 import datasets
 import tqdm
+
+from backends import BACKEND_NAMES, Backend
 from logger import create_logger
+from constants import (
+    ERROR_TIMEOUT,
+    STD_DATASET,
+)
 
 
 p = argparse.ArgumentParser(
@@ -65,68 +70,17 @@ p.add_argument(
     action=argparse.BooleanOptionalAction,
     help="whether to add question and correct answer to the output file.",
 )
+p.add_argument(
+    "--backend",
+    type=str,
+    required=False,
+    default="ollama",
+    choices=["ollama", "openai"],
+    help="which backend to use - Ollama or OpenAI - to query the models.",
+)
 
 
 logger = create_logger()
-
-
-STD_DATASET: str = "cais/hle"
-
-# Maximum number of tokens in an answer: ~8k
-MAX_TOKENS_ANSWER: int = 2**13
-# Maximum number of tokens when judging: ~4k
-MAX_TOKENS_JUDGE: int = 2**12
-
-ERROR_TIMEOUT: int = 3  # in seconds; wait period before next request is sent
-
-# taken from line 11-13,
-# https://github.com/centerforaisafety/hle
-SYSTEM_EXACT_ANSWER = """Your response should be in the following format:\n\
-Explanation: {your explanation for your final answer}\nExact Answer: {your \
-succinct, final answer}"""
-
-SYSTEM_MC = """Your response should be in the following format:\nExplanation: \
-{your explanation for your answer choice}\nAnswer: {your chosen answer}\n"""
-
-
-# taken partly from line 16-33,
-# https://github.com/centerforaisafety/hle
-JUDGE_PROMPT = """You're a teacher correcting a student's exam. You are given \
-the [exam question], the [student's response] and the known, [correct answer] \
-to compare it to.
-
-[exam question]: {question}
-
-=== === ===
-
-[student's response]: {response}
-
-=== === ===
-
-[correct answer]: {correct_answer}
-
-=== === ===
-
-Please extract the exact, final answer from the [student's response]. Then,
-given the [correct answer], judge whether that final answer is correct or \
-not, focusing only on if there are meaningful differences between \
-[correct answer] and the extracted student's final answer.
-
-DO NOT comment on any background to the problem, DO NOT attempt to solve the \
-problem, DO NOT argue for any answer different than [correct answer], focus \
-only on whether the answers match.
-
-Respond in valid JSON.
-"""
-
-JUDGE_FORMAT: "dict[str, Any]" = {
-    "type": "object",
-    "properties": {
-        "extracted_final_answer": {"type": "string"},
-        "is_answer_correct": {"type": "boolean"},
-    },
-    "required": ["extracted_final_answer", "is_answer_correct"],
-}
 
 
 @dataclasses.dataclass
@@ -199,75 +153,6 @@ def remove_thinking(answer: str) -> str:
     return answer[(thinking_part_end + 8 if thinking_part_end != -1 else 0) :]
 
 
-def prompt_model(client, model, question) -> ollama.ChatResponse:
-    """
-    Prompts a given model with a question.
-    """
-
-    user_message = {"role": "user", "content": question["question"]}
-
-    if question["image"]:
-        # attach an image if there is one in the question
-        user_message["images"] = [question["image"].split(",")[-1]]
-
-    response = client.chat(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    SYSTEM_EXACT_ANSWER
-                    if question["answer_type"] == "exactMatch"
-                    else SYSTEM_MC
-                ),
-            },
-            user_message,
-        ],
-        options={"num_predict": MAX_TOKENS_ANSWER},
-    )
-
-    return response
-
-
-def prompt_judge_model(
-    client, model, question, answer, actual_response
-) -> bool:
-    """
-    Prompts a third party about whether the answer to a given question is
-    correct or not.
-    """
-
-    if not answer.strip():
-        # No answer at all - that's wrong.
-        return False
-
-    while True:
-        # (as long as the judge model is unsure and hasn't given a definitive
-        # answer yet)
-
-        try:
-            response = client.chat(
-                model=model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": JUDGE_PROMPT.format(
-                            question=question,
-                            correct_answer=answer,
-                            response=actual_response,
-                        ),
-                    },
-                ],
-                options={"num_predict": MAX_TOKENS_JUDGE},
-                format=JUDGE_FORMAT,
-            )
-
-            return json.loads(response.message.content)["is_answer_correct"]
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Error while judging: %s", e)
-            time.sleep(ERROR_TIMEOUT)
-
-
 def finalize_result(glob_res: Result):
     """
     Finalizes the results by counting wrong and correct answers, then writes
@@ -287,7 +172,7 @@ def finalize_result(glob_res: Result):
 def judge_answers(
     args,
     models: "list[str]",
-    client: ollama.Client,
+    backend: Backend,
     questions,
     glob_res: Result,
 ):
@@ -303,12 +188,13 @@ def judge_answers(
 
         for question in tqdm.tqdm(questions):
             try:
-                is_correct = prompt_judge_model(
-                    client,
-                    args.judge,
-                    question["question"],
-                    question["answer"],
-                    model_results.answers[question["id"]]["answer"],
+                is_correct = backend.prompt_judge_model(
+                    model=args.judge,
+                    question=question["question"],
+                    model_answer=model_results.answers[question["id"]][
+                        "answer"
+                    ],  # type: ignore
+                    correct_answer=question["answer"],
                 )
             except KeyError as e:
                 logger.error("KeyError: %s", e)
@@ -319,7 +205,7 @@ def judge_answers(
 
 def generate_anwers(
     models: "list[str]",
-    client: ollama.Client,
+    backend: Backend,
     questions,
     glob_res: Result,
     add_question_info: bool = False,
@@ -334,9 +220,9 @@ def generate_anwers(
 
         for question in tqdm.tqdm(questions):
             try:
-                response = prompt_model(client, model, question)
+                response = backend.prompt_model(model=model, question=question)
 
-                answer: str = remove_thinking(response["message"]["content"])
+                answer: str = remove_thinking(response)
 
                 res.answers[question["id"]] = {
                     "answer": answer,
@@ -405,12 +291,16 @@ def main():
 
     models: "list[str]" = [model.strip() for model in args.model.split(",")]
 
-    client = ollama.Client(
-        host=os.getenv("HLE_OLLAMA_HOST", "http://localhost:11434"),
-        headers={
-            "Authentication": f"Bearer \
-{os.getenv('HLE_OLLAMA_TOKEN', 'ollama')}"
-        },
+    backend: Backend = BACKEND_NAMES[args.backend](
+        endpoint=os.getenv(
+            "HLE_EVAL_ENDPOINT",
+            (
+                "http://localhost:11434"
+                if args.backend == "ollama"
+                else "http://localhost:11434/v1"
+            ),
+        ),
+        api_key=os.getenv("HLE_EVAL_API_KEY", ""),
     )
 
     logger.info("loading dataset")
@@ -431,7 +321,7 @@ def main():
 
     logger.info("prompting models for answers")
     generate_anwers(
-        models, client, questions, glob_res, args.add_question_info
+        models, backend, questions, glob_res, args.add_question_info
     )
 
     logger.info("temporarily saving results")
@@ -442,7 +332,7 @@ def main():
         return
 
     logger.info("judging model answers")
-    judge_answers(args, models, client, questions, glob_res)
+    judge_answers(args, models, backend, questions, glob_res)
 
     logger.info("done judging, finalizing results")
     finalize_result(glob_res)

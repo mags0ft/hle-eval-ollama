@@ -55,25 +55,6 @@ to begin the exam for the model! Results will also be written to an output file 
 >
 > **PLEASE NOTE** that image input (vision) is still unstable for OpenAI endpoints - while it works, it consumes an absurd amount of tokens (which you may be billed for!) and is not recommended for use. You can use a lighter variant by setting `USE_EXPERIMENTAL_IMAGE_UPLOAD` to `True` in `src/constants.py`, but this does not work for every endpoint.
 
-## Example results
-
-Below is a comparison of two commonly used models; they've been asked 100 questions from the text-only subset and the answers were judged by Phi-4 (14b) by Microsoft.
-
-**These are by no means professionally taken, high-quality results and thus not representative.**
-
-```
-$ python3 ./src/eval.py --model=llama3:8b,mistral:7b --judge=phi4:latest --num-questions=100 --only-text
-[...]
-hle-eval-ollama: INFO - llama3:8b: 7 correct, 89 wrong (7.29 percent)
-hle-eval-ollama: INFO - mistral:7b: 13 correct, 83 wrong (13.54 percent)
-```
-
-<p align="center">
-    <img src="./images/comparison.png" width=512 alt="Image comparing these results visually in a bar diagram.">
-</p>
-
-_Note: these benchmark results have been captured using automatic response judging, which - as mentioned above - is still relatively unreliable. The results are not representative and shall not be cited._
-
 ## Environment variables
 
 - `HLE_EVAL_ENDPOINT`: specifies the host to connect to.

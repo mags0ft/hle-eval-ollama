@@ -8,7 +8,7 @@
     <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/mags0ft/hle-eval-ollama/pylint.yml?style=for-the-badge&logo=python&labelColor=%231e1e1e" />
 </p>
 
-_Want to see how your favorite local LLMs fair against Humanity's Last Exam? What difference quantizations may make?_
+_Want to see how your favorite local LLMs fare against Humanity's Last Exam? What difference quantizations may make?_
 
 This repo aims to **allow anyone to get up and running with [Humanity's Last Exam](https://lastexam.ai/) (or similar benchmarks!) and Ollama locally**.
 

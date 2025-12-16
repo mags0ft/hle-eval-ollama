@@ -12,7 +12,7 @@ datasets==3.5.0
 dill==0.3.8
 distro==1.9.0
 exceptiongroup==1.2.2
-filelock==3.18.0
+filelock==3.20.1
 frozenlist==1.6.0
 fsspec==2024.12.0
 h11==0.16.0
